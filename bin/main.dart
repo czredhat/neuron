@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'neuron.dart';
 
 var random = math.Random(1);
 
@@ -66,15 +65,12 @@ class Layer {
     // biases initialization
     biases = List.filled(neurons, 0, growable: false);
     for (var ni = 0; ni < neurons; ni++) {
-      biases[ni] = random.nextDouble();
+      //biases[ni] = random.nextDouble();
     }
   }
 
   void compute() {
     // initialize outputs
-
-
-
     outputs = List.generate(
         inputs.length, (_) => List.filled(neurons, 0, growable: false),
         growable: false);
@@ -115,12 +111,18 @@ class Layer {
 void solveNet(List<Layer> net) {
 
   for (int i = 0; i < net.length; i ++) {
+    //print('--- solving layer $i');
     Layer layer = net[i];
+
     if (i > 0) {
       layer.inputs = net[i -1].outputs;
     }
-
     layer.compute();
+
+
+
+    //print('--- layer $i solved');
+
   }
 }
 
@@ -141,6 +143,43 @@ double evaluateLoss(List<List<double>> netResults, List<List<double>> wantedResu
 }
 
 
+void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossFunction, [double lr = 0.05, double dx = 0.000000000001,]) {
+
+  for (int li = net.length - 1; li >= 0; li --) {
+    print('-- training layer $li');
+
+    Layer layer = net[li];
+
+    List<Layer> partialNet = [];
+    for (int i = li; i < net.length; i ++) {
+      partialNet.add(net[i]);
+    }
+
+
+    for (int ni = 0; ni < layer.neurons; ni ++) {
+      for (int wi = 0; wi < layer.weights[ni].length; wi ++) {
+        double originalWeight = layer.weights[ni][wi];
+
+        // I need to compute the gradient of loss function respecting the weight
+        // this is a really naive method
+
+        solveNet(partialNet);
+        double y1Loss = evaluateLoss(partialNet[partialNet.length - 1].outputs, wantedResults, lossFunction);
+
+        layer.weights[ni][wi] = layer.weights[ni][wi] + dx;
+        solveNet(partialNet);
+        double y2Loss = evaluateLoss(partialNet[partialNet.length - 1].outputs, wantedResults, lossFunction);
+
+        double gradient = (y2Loss - y1Loss) / dx;
+
+        double newWeight = originalWeight - lr * gradient;
+        layer.weights[ni][wi] = newWeight;
+      }
+    }
+  }
+
+}
+
 void main() {
   print('HELLO --------------');
 
@@ -151,23 +190,46 @@ void main() {
     [1, 1],
   ];
 
-  List<List<double>> wanted = [[0], [1], [1], [1]]; // OR gate
+  List<List<double>> wantedResults = [[0], [1], [1], [0]]; // OR gate
 
-  Layer layer1 = Layer(2, 1, identity);
+  Layer layer1 = Layer(2, 2, sigmoid);
   layer1.inputs = inputs;
+
+  Layer layer2 = Layer(2, 1, identity);
 
 
   List<Layer> net = [
     layer1,
+    layer2,
   ];
 
-  solveNet(net);
 
-  print('layer1 info ----');
-  layer1.infoWeightsAndBiases();
-  layer1.infoOutputs();
+  for (int step = 0; step < 800; step ++) {
+    print('------- STEP $step');
+    solveNet(net);
+    print('layer2 info ----');
+    net.last.infoWeightsAndBiases();
+    //net.last.infoOutputs();
+    for (int i = 0; i < inputs.length; i ++) {
+      print('input $i: ${inputs[i]} -> ${net.last.outputs[i]}');
+    }
+    print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
+
+    bool stop = true;
+    for (int i = 0; i < wantedResults.length; i ++) {
+      if (classifyFunction(net.last.outputs[i][0]) != wantedResults[i][0] ) {
+        stop = false;
+        break;
+      }
+    }
+
+    if (stop == true) {
+      break;
+    }
+
+    learn(net, wantedResults, simpleLoss);
 
 
-  print('Loss: ${evaluateLoss(net.last.outputs, wanted, simpleLoss)}');
+  }
 
 }
