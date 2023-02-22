@@ -14,6 +14,10 @@ double sigmoid(double input) {
   return 1 / (1 + math.pow(math.e, -input));
 }
 
+double relu(double input) {
+  return input > 0? input : 0;
+}
+
 int stepFunction(double input) {
   return input >= 0 ? 1 : 0;
 }
@@ -211,10 +215,12 @@ void main() {
   net.first.inputs = inputs;
 
 
-  for (int step = 0; step < 800; step ++) {
+  int start = DateTime.now().millisecond;
+
+  for (int step = 0; step < 1000; step ++) {
     print('------- STEP $step');
     solveNet(net);
-    print('layer2 info ----');
+    //print('layer2 info ----');
     //net.last.infoWeightsAndBiases();
     //net.last.infoOutputs();
     for (int i = 0; i < inputs.length; i ++) {
@@ -234,9 +240,9 @@ void main() {
       break;
     }
 
-    learn(net, wantedResults, simpleLoss, 0.35, 0.0000001);
-
-
+    learn(net, wantedResults, simpleLoss, 0.35, 0.00000001);
   }
 
+  int duration = DateTime.now().millisecond - start;
+  print('--- Finished in $duration ms');
 }
