@@ -218,7 +218,7 @@ void main() {
   net.first.inputs = inputs;
 
 
-  int start = DateTime.now().millisecond;
+  int start = DateTime.now().millisecondsSinceEpoch;
 
   for (int step = 0; step < 1000; step ++) {
     print('------- STEP $step');
@@ -247,6 +247,6 @@ void main() {
   }
 
 
-  int duration = DateTime.now().millisecond - start;
+  int duration = DateTime.now().millisecondsSinceEpoch - start;
   print('--- Finished in $duration ms');
 }
