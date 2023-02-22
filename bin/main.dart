@@ -225,7 +225,7 @@ void main() {
 
   int start = DateTime.now().millisecondsSinceEpoch;
 
-  for (int step = 0; step < 2000; step ++) {
+  for (int step = 0; step < 4000; step ++) {
     print('------- STEP $step');
     solveNet(net);
     //print('layer2 info ----');
@@ -237,7 +237,7 @@ void main() {
     print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
 
 
-    learn(net, wantedResults, simpleLoss, 0.01, 0.0000000001);
+    learn(net, wantedResults, simpleLoss, 0.025, 0.00000000001);
   }
 
 
@@ -245,6 +245,24 @@ void main() {
   for (int i = 0; i < wantedResults.length; i ++) {
     print('wanted$i: ${wantedResults[i][0]} -> ${net.last.outputs[i][0]} ::: diff: ${  wantedResults[i][0] - net.last.outputs[i][0]  } ');
   }
+
+
+  print('---- TESTS: ----');
+
+  var r = math.Random(DateTime.now().millisecondsSinceEpoch);
+  for (int i = 0; i < 5; i ++) {
+    double x = r.nextDouble() * 2 * math.pi;
+
+    List<List<double>> input = [[x]];
+    net.first.inputs = input;
+    solveNet(net);
+
+    double wanted = math.sin(x);
+    double computed = net.last.outputs[0][0];
+
+    print('--- cos($x): $wanted vs $computed' );
+  }
+
 
 
   int duration = DateTime.now().millisecondsSinceEpoch - start;
