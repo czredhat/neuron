@@ -192,7 +192,7 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
       double gradient = (y2Loss - y1Loss) / dx;
       layer.biases[bi] = originalBias - lr * gradient;
     }
-    
+
   }
 
 }
@@ -200,53 +200,53 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
 void main() {
   print('HELLO --------------');
 
-  List<List<double>> inputs = [
-    [0, 0],
-    [0, 1],
-    [1, 0],
-    [1, 1],
-  ];
+  List<List<double>> inputs = [];
+  List<List<double>> wantedResults = [];
 
-  List<List<double>> wantedResults = [[0], [1], [1], [0]]; // XOR gate
+  double pos = 0;
+  while (pos < (2 * math.pi)) {
+    inputs.add([ pos ]);
+    wantedResults.add([ math.sin(pos) ]);
 
-//
+    pos += (2 * math.pi) / 20;
+  }
+
+  print('inputs: $inputs');
+  print('outputs: $wantedResults');
+
+
   List<Layer> net = [
-    Layer(2, 2, sigmoid),
-    Layer(2, 1, identity),
+    Layer(1, 40, sigmoid),
+    Layer(40, 1, identity),
   ];
 
   net.first.inputs = inputs;
 
 
-  int start = DateTime.now().millisecond;
+  int start = DateTime.now().millisecondsSinceEpoch;
 
-  for (int step = 0; step < 1000; step ++) {
+  for (int step = 0; step < 2000; step ++) {
     print('------- STEP $step');
     solveNet(net);
     //print('layer2 info ----');
     //net.last.infoWeightsAndBiases();
     //net.last.infoOutputs();
     for (int i = 0; i < inputs.length; i ++) {
-      print('input $i: ${inputs[i]} -> ${net.last.outputs[i]}');
+      //print('input $i: ${inputs[i]} -> ${net.last.outputs[i]}');
     }
     print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
 
-    bool stop = true;
-    for (int i = 0; i < wantedResults.length; i ++) {
-      if (classifyFunction(net.last.outputs[i][0]) != wantedResults[i][0] ) {
-        stop = false;
-        break;
-      }
-    }
 
-    if (stop == true) {
-      break;
-    }
-
-    learn(net, wantedResults, simpleLoss, 0.3, 0.0000000001);
+    learn(net, wantedResults, simpleLoss, 0.01, 0.0000000001);
   }
 
 
-  int duration = DateTime.now().millisecond - start;
+  print('results:');
+  for (int i = 0; i < wantedResults.length; i ++) {
+    print('wanted$i: ${wantedResults[i][0]} -> ${net.last.outputs[i][0]} ::: diff: ${  wantedResults[i][0] - net.last.outputs[i][0]  } ');
+  }
+
+
+  int duration = DateTime.now().millisecondsSinceEpoch - start;
   print('--- Finished in $duration ms');
 }
