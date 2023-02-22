@@ -65,7 +65,7 @@ class Layer {
     // biases initialization
     biases = List.filled(neurons, 0, growable: false);
     for (var ni = 0; ni < neurons; ni++) {
-      //biases[ni] = random.nextDouble();
+      biases[ni] = random.nextDouble();
     }
   }
 
@@ -111,18 +111,12 @@ class Layer {
 void solveNet(List<Layer> net) {
 
   for (int i = 0; i < net.length; i ++) {
-    //print('--- solving layer $i');
     Layer layer = net[i];
 
     if (i > 0) {
       layer.inputs = net[i -1].outputs;
     }
     layer.compute();
-
-
-
-    //print('--- layer $i solved');
-
   }
 }
 
@@ -146,8 +140,6 @@ double evaluateLoss(List<List<double>> netResults, List<List<double>> wantedResu
 void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossFunction, [double lr = 0.05, double dx = 0.000000000001,]) {
 
   for (int li = net.length - 1; li >= 0; li --) {
-    print('-- training layer $li');
-
     Layer layer = net[li];
 
     List<Layer> partialNet = [];
@@ -155,12 +147,12 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
       partialNet.add(net[i]);
     }
 
-
+    // adjusting weights ...
     for (int ni = 0; ni < layer.neurons; ni ++) {
       for (int wi = 0; wi < layer.weights[ni].length; wi ++) {
         double originalWeight = layer.weights[ni][wi];
 
-        // I need to compute the gradient of loss function respecting the weight
+        // I need to compute the gradient of loss function with respect to the weight
         // this is a really naive method
 
         solveNet(partialNet);
@@ -171,11 +163,29 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
         double y2Loss = evaluateLoss(partialNet[partialNet.length - 1].outputs, wantedResults, lossFunction);
 
         double gradient = (y2Loss - y1Loss) / dx;
-
-        double newWeight = originalWeight - lr * gradient;
-        layer.weights[ni][wi] = newWeight;
+        layer.weights[ni][wi] = originalWeight - lr * gradient;
       }
     }
+
+    // adjusting biases ...
+    for (int bi = 0; bi < layer.biases.length; bi ++) {
+      double originalBias = layer.biases[bi];
+
+      // I need to compute the gradient of loss function with respect to the bias
+      // this is a really naive method
+
+      solveNet(partialNet);
+      double y1Loss = evaluateLoss(partialNet[partialNet.length - 1].outputs, wantedResults, lossFunction);
+
+      layer.biases[bi] = layer.biases[bi] + dx;
+      solveNet(partialNet);
+      double y2Loss = evaluateLoss(partialNet[partialNet.length - 1].outputs, wantedResults, lossFunction);
+
+      double gradient = (y2Loss - y1Loss) / dx;
+      layer.biases[bi] = originalBias - lr * gradient;
+    }
+
+
   }
 
 }
@@ -192,23 +202,20 @@ void main() {
 
   List<List<double>> wantedResults = [[0], [1], [1], [0]]; // OR gate
 
-  Layer layer1 = Layer(2, 2, sigmoid);
-  layer1.inputs = inputs;
-
-  Layer layer2 = Layer(2, 1, identity);
-
 
   List<Layer> net = [
-    layer1,
-    layer2,
+    Layer(2, 2, sigmoid),
+    Layer(2, 1, identity),
   ];
+
+  net.first.inputs = inputs;
 
 
   for (int step = 0; step < 800; step ++) {
     print('------- STEP $step');
     solveNet(net);
     print('layer2 info ----');
-    net.last.infoWeightsAndBiases();
+    //net.last.infoWeightsAndBiases();
     //net.last.infoOutputs();
     for (int i = 0; i < inputs.length; i ++) {
       print('input $i: ${inputs[i]} -> ${net.last.outputs[i]}');
@@ -227,7 +234,7 @@ void main() {
       break;
     }
 
-    learn(net, wantedResults, simpleLoss);
+    learn(net, wantedResults, simpleLoss, 0.35, 0.0000001);
 
 
   }
