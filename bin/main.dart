@@ -3,6 +3,10 @@ import 'dart:math' as math;
 
 var random = math.Random(1);
 
+double uniformRandom() {
+  return (random.nextDouble() - 0.5) * 2;
+}
+
 typedef ActivationFunction = double Function(double input);
 typedef LossFunction = double Function(double wanted, double result);
 
@@ -18,7 +22,7 @@ double relu(double input) {
   return input > 0? input : 0;
 }
 
-int stepFunction(double input) {
+double stepFunction(double input) {
   return input >= 0 ? 1 : 0;
 }
 
@@ -188,8 +192,7 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
       double gradient = (y2Loss - y1Loss) / dx;
       layer.biases[bi] = originalBias - lr * gradient;
     }
-
-
+    
   }
 
 }
@@ -204,9 +207,9 @@ void main() {
     [1, 1],
   ];
 
-  List<List<double>> wantedResults = [[0], [1], [1], [0]]; // OR gate
+  List<List<double>> wantedResults = [[0], [1], [1], [0]]; // XOR gate
 
-
+//
   List<Layer> net = [
     Layer(2, 2, sigmoid),
     Layer(2, 1, identity),
@@ -240,8 +243,9 @@ void main() {
       break;
     }
 
-    learn(net, wantedResults, simpleLoss, 0.35, 0.00000001);
+    learn(net, wantedResults, simpleLoss, 0.3, 0.0000000001);
   }
+
 
   int duration = DateTime.now().millisecond - start;
   print('--- Finished in $duration ms');
