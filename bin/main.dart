@@ -209,31 +209,40 @@ bool isItClassifiedWell(List<List<double>> wantedResults, List<List<double>> res
 
 void main() {
 
-/*
+
+  // y = 2x + 3y
+  List<List<double>> inputs = [];
+  List<List<double>> wantedResults = [];
+
+  for (int i = 0; i < 6; i ++) {
+    inputs.add([(i * 2).toDouble(), (i * 3).toDouble()]);
+    wantedResults.add([(i*2 + i*3).toDouble()]);
+  }
+
+  /*
   // y = 2x
   List<List<double>> inputs = [];
   List<List<double>> wantedResults = [];
 
-  for (int i = 0; i < 4; i ++) {
+  for (int i = 0; i < 10; i ++) {
     inputs.add([i.toDouble()]);
     wantedResults.add([(i*2).toDouble()]);
   }
 */
 
-
+/*
   List<List<double>> inputs = [
     [0, 0],
     [0, 1],
     [1, 0],
     [1, 1]
   ];
-
   List<List<double>> wantedResults = [[0], [0], [0], [1] ]; // Identity gate
-
+*/
 
   // single perceptron net
   List<Layer> net = [
-    Layer(2, 1, sigmoidMinus1),
+    Layer(2, 1, identity),
   ];
 
   net.first.inputs = inputs;
@@ -251,11 +260,10 @@ void main() {
     print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
 
     if (isItClassifiedWell(wantedResults, net.last.outputs) == true) {
-      break;
+      //break;
     }
-
-
-    learn(net, wantedResults, simpleLoss, 0.3);
+    
+    learn(net, wantedResults, simpleLoss, 0.001);
   }
 
 
