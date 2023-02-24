@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'activations.dart';
 import 'loss.dart';
 
-var random = math.Random(1);
+var random = math.Random(2);
 
 
 int classifyFunction(double input) {
@@ -191,15 +191,35 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
       }
     }
 
-
-
-
-
   }
 
 }
 
+
+bool isItClassifiedWell(List<List<double>> wantedResults, List<List<double>> results) {
+  bool stop = true;
+  for (int i = 0; i < wantedResults.length; i ++) {
+    if (classifyFunction(results[i][0]) != wantedResults[i][0] ) {
+      stop = false;
+      break;
+    }
+  }
+  return stop;
+}
+
 void main() {
+
+/*
+  // y = 2x
+  List<List<double>> inputs = [];
+  List<List<double>> wantedResults = [];
+
+  for (int i = 0; i < 4; i ++) {
+    inputs.add([i.toDouble()]);
+    wantedResults.add([(i*2).toDouble()]);
+  }
+*/
+
 
   List<List<double>> inputs = [
     [0, 0],
@@ -210,9 +230,10 @@ void main() {
 
   List<List<double>> wantedResults = [[0], [0], [0], [1] ]; // Identity gate
 
+
   // single perceptron net
   List<Layer> net = [
-    Layer(2, 1, identity),
+    Layer(2, 1, sigmoidMinus1),
   ];
 
   net.first.inputs = inputs;
@@ -220,37 +241,29 @@ void main() {
 
   int start = DateTime.now().millisecondsSinceEpoch;
 
-  for (int step = 0; step < 10; step ++) {
+  for (int step = 0; step < 100; step ++) {
     print('------------------- STEP $step -----------------------');
     solveNet(net);
 
     for (int i = 0; i < inputs.length; i ++) {
-      print('input $i: ${inputs[i]} -> ${net.last.outputs[i]}');
+      print('input $i: ${inputs[i]} -> ${net.last.outputs[i]} vs ${wantedResults[i]}');
     }
     print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
 
-
-    bool stop = true;
-    for (int i = 0; i < wantedResults.length; i ++) {
-      if (classifyFunction(net.last.outputs[i][0]) != wantedResults[i][0] ) {
-        stop = false;
-        break;
-      }
-    }
-
-    if (stop == true) {
+    if (isItClassifiedWell(wantedResults, net.last.outputs) == true) {
       break;
     }
 
-    learn(net, wantedResults, simpleLoss, 0.1);
+
+    learn(net, wantedResults, simpleLoss, 0.3);
   }
 
-  /*
-  print('layer1 info ----');
+
+  print('last layer info ----');
   net.last.infoWeightsAndBiases();
-  net.last.infoOutputs();
-  net.last.infoDerivates();
-*/
+  //net.last.infoOutputs();
+  //net.last.infoDerivates();
+
 
 
   int duration = DateTime.now().millisecondsSinceEpoch - start;
