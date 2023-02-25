@@ -45,7 +45,7 @@ class Layer {
 
     weights = [];
     for (var ni = 0; ni < neurons; ni++) {
-      weights.add(List.generate(inputsCount, (_) => random.nextDouble(), growable: false));
+      weights.add(List.generate(inputsCount, (_) => 0 /*random.nextDouble()*/, growable: false));
     }
 
     // biases initialization
@@ -58,7 +58,7 @@ class Layer {
   double sumForActivation(int inputIndex, int neuronIndex) {
 
     double sum = 0;
-    for (int i = 0; i < weights.length; i ++) {
+    for (int i = 0; i < weights[neuronIndex].length; i ++) {
       sum += inputs[inputIndex][i] * weights[neuronIndex][i];
     }
 
@@ -149,6 +149,7 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
       partialNet.add(net[i]);
     }
     Layer layer = partialNet.first;
+    Layer lastLayer = net.last;
 
 
     layer.derivates = List.generate(layer.inputs.length, (_) {
@@ -157,38 +158,35 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
       }, growable: false);
     }, growable: false);
 
+
     for (int ni = 0; ni < layer.neurons; ni ++) {
+
       for (int wi = 0; wi < layer.weights[ni].length; wi ++) {
+
+        //solveNet(partialNet); // prepocitam sit
 
         for (int ii = 0; ii < layer.inputs.length; ii ++) {
 
-              double inputSum = layer.sumForActivation(ii, ni); // tohle by se dalo optimalizovat ulozenim pro solveNet...
+            double inputSum = layer.sumForActivation(ii, ni); // tohle by se dalo optimalizovat ulozenim v solveNet...
 
-              layer.derivates[ii][ni][wi] = derActivation(layer.activation)(inputSum) * layer.inputs[ii][wi];
-          }
-
+            layer.derivates[ii][ni][wi] = derActivation(layer.activation)(inputSum) * layer.inputs[ii][wi];
         }
-    }
 
-
-    for (int ni = 0; ni < layer.neurons; ni ++) {
-
-      for (int wi = 0; wi < layer.weights[ni].length; wi ++) {
-
+        // tady musim mit vypocitanou derivaci podle wi pro vsechny vstupy site
         double lossDerivation = 0;
-        Layer lastLayer = net.last;
 
         for (int ii = 0; ii < wantedResults.length; ii ++) {
           List<double> wanted = wantedResults[ii];
           List<double> result = lastLayer.outputs[ii];
 
-          for (int lni = 0; lni < lastLayer.neurons; lni++) {
-            lossDerivation += derLoss(lossFunction)(wanted[lni], result[lni]) * lastLayer.derivates[ii][ni][lni];
-          }
+          //for (int oi = 0; oi < lastLayer.outputs[ii].length; oi++) {
+            lossDerivation += derLoss(lossFunction)(wanted[ni], result[ni]) * lastLayer.derivates[ii][ni][wi];
+          //}
         }
 
         layer.weights[ni][wi] = layer.weights[ni][wi] - lr * lossDerivation;
       }
+
     }
 
   }
@@ -211,59 +209,83 @@ void main() {
 
 
   // y = 2x + 3y
+/*
   List<List<double>> inputs = [];
   List<List<double>> wantedResults = [];
 
   for (int i = 0; i < 6; i ++) {
     inputs.add([(i * 2).toDouble(), (i * 3).toDouble()]);
-    wantedResults.add([(i*2 + i*3).toDouble()]);
+    wantedResults.add([(i*2 - i*3.75).toDouble()]);
   }
-
-  /*
-  // y = 2x
+*/
+/*
   List<List<double>> inputs = [];
   List<List<double>> wantedResults = [];
-
-  for (int i = 0; i < 10; i ++) {
-    inputs.add([i.toDouble()]);
-    wantedResults.add([(i*2).toDouble()]);
+  int k = 10;
+  for (int i = 0; i < k; i ++) {
+    inputs.add([i.toDouble() * (1/k)] );
+    wantedResults.add([(i).toDouble() * (1/k)]);
   }
 */
 
 /*
+  // y = 2x
+  List<List<double>> inputs = [];
+  List<List<double>> wantedResults = [];
+
+  for (int i = 0; i < 3; i ++) {
+    inputs.add([i.toDouble()]);
+    wantedResults.add([(i).toDouble()]);
+  }
+*/
+
+/*
+  List<List<double>> inputs = [];
+  List<List<double>> wantedResults = [];
+  int k = 10;
+  for (int i = 0; i < k; i ++) {
+    inputs.add([i.toDouble() * (1/k), i.toDouble() * (1/k)] );
+    wantedResults.add([(i).toDouble() * (1/k), (i).toDouble() * (1/k)]);
+  }
+*/
+
   List<List<double>> inputs = [
     [0, 0],
     [0, 1],
     [1, 0],
     [1, 1]
   ];
-  List<List<double>> wantedResults = [[0], [0], [0], [1] ]; // Identity gate
-*/
+  List<List<double>> wantedResults = [[0, 0, 0], [1, 0, 1], [1, 0, 1], [1, 1, 1] ]; // OR and AND gate
+
 
   // single perceptron net
   List<Layer> net = [
-    Layer(2, 1, identity),
+    Layer(2, 3, identity),
   ];
 
   net.first.inputs = inputs;
 
+  /*
+  net.first.infoWeightsAndBiases();
+  return ;
+*/
 
   int start = DateTime.now().millisecondsSinceEpoch;
 
-  for (int step = 0; step < 100; step ++) {
+  for (int step = 0; step < 10; step ++) {
     print('------------------- STEP $step -----------------------');
     solveNet(net);
 
     for (int i = 0; i < inputs.length; i ++) {
-      print('input $i: ${inputs[i]} -> ${net.last.outputs[i]} vs ${wantedResults[i]}');
+      print('input $i: ${inputs[i]} -> ${wantedResults[i]} vs ${net.last.outputs[i]} ');
     }
     print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
 
     if (isItClassifiedWell(wantedResults, net.last.outputs) == true) {
-      //break;
+      break;
     }
-    
-    learn(net, wantedResults, simpleLoss, 0.001);
+
+    learn(net, wantedResults, simpleLoss, 0.05);
   }
 
 

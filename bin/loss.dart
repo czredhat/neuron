@@ -3,7 +3,7 @@ import 'dart:math' as math;
 typedef LossFunction = double Function(double wanted, double result);
 
 double simpleLoss(double wanted, double result) {
-  return math.pow(wanted - result, 2).toDouble();
+  return math.pow(result - wanted, 2).toDouble();
 }
 
 double derSimpleLoss(double wanted, double result) {
