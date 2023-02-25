@@ -163,28 +163,35 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
 
       for (int wi = 0; wi < layer.weights[ni].length; wi ++) {
 
-        //solveNet(partialNet); // prepocitam sit
 
         for (int ii = 0; ii < layer.inputs.length; ii ++) {
 
-            double inputSum = layer.sumForActivation(ii, ni); // tohle by se dalo optimalizovat ulozenim v solveNet...
 
-            layer.derivates[ii][ni][wi] = derActivation(layer.activation)(inputSum) * layer.inputs[ii][wi];
+          for (int woi = 0; woi < layer.weights[ni].length; woi ++) {
+            layer.derivates[ii][ni][woi] = 0;
+          }
+
+          double inputSum = layer.sumForActivation(ii, ni); // tohle by se dalo optimalizovat ulozenim v solveNet...
+          layer.derivates[ii][ni][wi] = derActivation(layer.activation)(inputSum) * layer.inputs[ii][wi];
+
+          // vsechny ostatni derivace jine vahy nez wi musim v teto vrstve oznacit jako nula
         }
 
-        // tady musim mit vypocitanou derivaci podle wi pro vsechny vstupy site
+        // tady musim mit vypocitanou derivaci podle wi pro vsechny vstupy a vystupy site
         double lossDerivation = 0;
 
         for (int ii = 0; ii < wantedResults.length; ii ++) {
           List<double> wanted = wantedResults[ii];
           List<double> result = lastLayer.outputs[ii];
 
-          //for (int oi = 0; oi < lastLayer.outputs[ii].length; oi++) {
-            lossDerivation += derLoss(lossFunction)(wanted[ni], result[ni]) * lastLayer.derivates[ii][ni][wi];
-          //}
+          for (int oi = 0; oi < result.length; oi++) {
+            lossDerivation += derLoss(lossFunction)(wanted[oi], result[oi]) * layer.derivates[ii][oi][wi];
+          }
         }
 
         layer.weights[ni][wi] = layer.weights[ni][wi] - lr * lossDerivation;
+        solveNet(partialNet); // po zmene kazde vahy je potreba prepocitat sit
+
       }
 
     }
@@ -248,6 +255,15 @@ void main() {
     wantedResults.add([(i).toDouble() * (1/k), (i).toDouble() * (1/k)]);
   }
 */
+/*
+  List<List<double>> inputs = [];
+  List<List<double>> wantedResults = [];
+  int k = 20;
+  for (int i = 0; i < k; i ++) {
+    inputs.add([i.toDouble() * (1/k)] );
+    wantedResults.add([(i).toDouble() * (1/k)]);
+  }
+*/
 
   List<List<double>> inputs = [
     [0, 0],
@@ -258,9 +274,19 @@ void main() {
   List<List<double>> wantedResults = [[0, 0, 0], [1, 0, 1], [1, 0, 1], [1, 1, 1] ]; // OR and AND gate
 
 
+/*
+  List<List<double>> inputs = [
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1]
+  ];
+  List<List<double>> wantedResults = [[0], [0], [0], [1] ]; // OR and AND gate
+*/
+
   // single perceptron net
   List<Layer> net = [
-    Layer(2, 3, identity),
+    Layer(inputs[0].length, wantedResults[0].length, identity),
   ];
 
   net.first.inputs = inputs;
