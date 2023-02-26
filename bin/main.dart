@@ -193,7 +193,6 @@ double gradientOfLossFunction(List<Layer> net, List<List<double>> wantedResults,
       lossDerivation += derLoss(lossFunction)(wanted[oi], result[oi]) * lastLayer.derivatives[ii][oi];
     }
   }
-
   return lossDerivation;
 }
 
@@ -288,7 +287,7 @@ void main() {
   List<List<double>> wantedResults = [[0, 0, 0], [1, 0, 1], [1, 0, 1], [1, 1, 1] ]; // OR and AND gate
 */
 
-
+/*
   List<List<double>> inputs = [
     [0, 0],
     [0, 1],
@@ -296,13 +295,28 @@ void main() {
     [1, 1]
   ];
   List<List<double>> wantedResults = [[0], [1], [1], [0] ]; // XOR
+*/
 
+  List<List<double>> inputs = [];
+  List<List<double>> wantedResults = [];
+
+  double pos = 0;
+  while (pos < (2 * math.pi)) {
+    inputs.add([ pos / (math.pi*2)]);
+    wantedResults.add([ math.sin(pos) ]);
+
+    pos += (2 * math.pi) / 40;
+  }
+
+  print('inputs: $inputs');
+  print('outputs: $wantedResults');
 
   // single perceptron net
   List<Layer> net = [
-    Layer(2, 2, sigmoid),
-    Layer(2, 1, identity),
+    Layer(1, 40, sigmoid),
+    Layer(40, 1, identity),
   ];
+
   net.first.inputs = inputs;
 
   /*
@@ -312,20 +326,27 @@ void main() {
 
   int start = DateTime.now().millisecondsSinceEpoch;
 
-  for (int step = 0; step < 2000; step ++) {
+  for (int step = 0; step < 5000; step ++) {
     print('------------------- STEP $step -----------------------');
     solveNet(net);
 
+    /*
     for (int i = 0; i < inputs.length; i ++) {
       print('input $i: ${inputs[i]} -> ${wantedResults[i]} vs ${net.last.outputs[i]} ');
     }
-    print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
+    */
 
+    print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
+/*
     if (isItClassifiedWell(wantedResults, net.last.outputs) == true) {
       break;
     }
+*/
+    learn(net, wantedResults, simpleLoss, 0.02);
+  }
 
-    learn(net, wantedResults, simpleLoss, 0.3);
+  for (int i = 0; i < inputs.length; i ++) {
+    print('input $i: ${inputs[i]} -> ${wantedResults[i]} vs ${net.last.outputs[i]} ');
   }
 
   //net.last.infoWeightsAndBiases();
