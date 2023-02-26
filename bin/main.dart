@@ -1,28 +1,26 @@
 import 'dart:math' as math;
 
-import 'activations.dart';
-import 'loss.dart';
+import '../lib/activation_functions.dart';
+import '../lib/loss_functions.dart';
+import '../lib/utils.dart';
 
-var random = math.Random(2);
+var random = math.Random(1);
 
-
-int classifyFunction(double input) {
-  return input >= 0.5 ? 1 : 0;
-}
 
 
 class Layer {
 
   int inputsCount;
 
-  // [number of all possible input variants][one concrete input vector]
+  /// [number of all possible input variants][one concrete input vector]
   List<List<double>> inputs = [];
 
-  // number of neurons in this layer
+  /// number of neurons in this layer
   int neurons;
 
-  // [number of neurons in this layer][number of inputs to this layer]
+  /// [number of neurons in this layer][number of inputs to this layer]
   List<List<double>> weights = [];
+
 
   // derivates with respect to a coresponding weight
   // [number of all possible input variants][number of neurons][number of weights]
@@ -33,7 +31,10 @@ class Layer {
 
   ActivationFunction activation;
 
-  // [number of neurons in this layer][output vector for the given input vector]
+  /// [input index][neuron index] = sum of neuron's i*w
+  List<List<double>> iwSum = [];
+
+  /// [number of neurons in this layer][output vector for the given input vector]
   List<List<double>> outputs = [];
 
   Layer(this.inputsCount, this.neurons, this.activation) {
@@ -55,33 +56,28 @@ class Layer {
     }
   }
 
-  double sumForActivation(int inputIndex, int neuronIndex) {
-
-    double sum = 0;
-    for (int i = 0; i < weights[neuronIndex].length; i ++) {
-      sum += inputs[inputIndex][i] * weights[neuronIndex][i];
-    }
-
-    return sum;
-  }
-
   void compute() {
-    // initialize outputs
+    // all outputs to 0
     outputs = List.generate(
         inputs.length, (_) => List.filled(neurons, 0, growable: false),
         growable: false);
 
+    // all iwSum to 0
+    iwSum = List.generate(
+        inputs.length, (_) => List.filled(neurons, 0, growable: false),
+        growable: false);
+
     // calculating output for all inputs variants
-    for (int i = 0; i < inputs.length; i++) {
-      List<double> input = inputs[i];
+    for (int ii = 0; ii < inputs.length; ii++) {
+      List<double> input = inputs[ii];
 
       for (int ni = 0; ni < neurons; ni++) {
         // w * i
-        double sum = 0;
         for (int wi = 0; wi < input.length; wi++) {
-          sum += weights[ni][wi] * input[wi];
+          iwSum[ii][ni] += weights[ni][wi] * input[wi];
         }
-        outputs[i][ni] = activation(sum + biases[ni]);
+
+        outputs[ii][ni] = activation(iwSum[ii][ni] + biases[ni]);
       }
     }
   }
@@ -110,7 +106,7 @@ class Layer {
   }
 }
 
-
+/// Forward propagation of net's inputs to outputs
 void solveNet(List<Layer> net) {
 
   for (int i = 0; i < net.length; i ++) {
@@ -135,7 +131,6 @@ double evaluateLoss(List<List<double>> netResults, List<List<double>> wantedResu
       sum += lossFunction(wantedResults[i][r], netResults[i][r]);
     }
   }
-
   return sum;
 }
 
@@ -171,7 +166,7 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
             layer.derivates[ii][ni][woi] = 0;
           }
 
-          double inputSum = layer.sumForActivation(ii, ni); // tohle by se dalo optimalizovat ulozenim v solveNet...
+          double inputSum = layer.iwSum[ii][ni];
           layer.derivates[ii][ni][wi] = derActivation(layer.activation)(inputSum) * layer.inputs[ii][wi];
 
           // vsechny ostatni derivace jine vahy nez wi musim v teto vrstve oznacit jako nula
@@ -200,17 +195,6 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
 
 }
 
-
-bool isItClassifiedWell(List<List<double>> wantedResults, List<List<double>> results) {
-  bool stop = true;
-  for (int i = 0; i < wantedResults.length; i ++) {
-    if (classifyFunction(results[i][0]) != wantedResults[i][0] ) {
-      stop = false;
-      break;
-    }
-  }
-  return stop;
-}
 
 void main() {
 
@@ -298,7 +282,7 @@ void main() {
 
   int start = DateTime.now().millisecondsSinceEpoch;
 
-  for (int step = 0; step < 10; step ++) {
+  for (int step = 0; step < 20; step ++) {
     print('------------------- STEP $step -----------------------');
     solveNet(net);
 
