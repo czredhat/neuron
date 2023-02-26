@@ -141,9 +141,12 @@ void solveDerivatives(List<Layer> net, int neuronIndex, int weightIndex) {
         for (int ii = 0; ii < layer.inputs.length; ii ++) {
 
           if (li == 0) {
+            // it can be optimized ... the first layer can be computed separately outside this cycle and it doesnt need to iterate all its weights;
             // the first layer of the net has specific derivatives
-            if (ni == neuronIndex && wi == weightIndex) {
-              layer.derivatives[ii][ni] = derActivation(layer.activation)(layer.iwSum[ii][ni]) * layer.inputs[ii][wi];
+            if (ni == neuronIndex) {
+              layer.derivatives[ii][ni] = derActivation(layer.activation)(layer.iwSum[ii][neuronIndex]) * layer.inputs[ii][weightIndex];
+            } else {
+              layer.derivatives[ii][ni] = 0;
             }
           } else {
             // TODO
