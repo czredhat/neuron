@@ -27,7 +27,7 @@ class Layer {
   ActivationFunction activation;
 
   /// [input's index][neuron's index] = sum of given neuron's i*w for specified input
-  List<List<double>> iwSum = [];
+  List<List<double>> iwbSum = [];
 
   /// [input's index][neuron's index] = given neuron output value for specified input
   List<List<double>> outputs = [];
@@ -52,7 +52,7 @@ class Layer {
     // biases initialization
     biases = List.filled(neurons, 0, growable: false);
     for (var ni = 0; ni < neurons; ni++) {
-      //biases[ni] = random.nextDouble();
+      biases[ni] = random.nextDouble();
     }
   }
 
@@ -63,7 +63,7 @@ class Layer {
         growable: false);
 
     // all iwSum to 0
-    iwSum = List.generate(
+    iwbSum = List.generate(
         inputs.length, (_) => List.filled(neurons, 0, growable: false),
         growable: false);
 
@@ -78,10 +78,11 @@ class Layer {
       for (int ni = 0; ni < neurons; ni++) {
         // w * i
         for (int wi = 0; wi < input.length; wi++) {
-          iwSum[ii][ni] += weights[ni][wi] * input[wi];
+          iwbSum[ii][ni] += weights[ni][wi] * input[wi];
         }
 
-        outputs[ii][ni] = activation(iwSum[ii][ni] + biases[ni]);
+        iwbSum[ii][ni] += biases[ni];
+        outputs[ii][ni] = activation(iwbSum[ii][ni]);
       }
     }
   }
@@ -132,7 +133,7 @@ double evaluateLoss(List<List<double>> netResults, List<List<double>> wantedResu
   return sum;
 }
 
-void solveDerivatives(List<Layer> net, int neuronIndex, int weightIndex) {
+void solveDerivativesRespectingWeight(List<Layer> net, int neuronIndex, int weightIndex) {
 
   // solves first layer
   {
@@ -141,7 +142,7 @@ void solveDerivatives(List<Layer> net, int neuronIndex, int weightIndex) {
     for (int ni = 0; ni < layer.neurons; ni ++) {
       for (int ii = 0; ii < layer.inputs.length; ii ++) {
         if (ni == neuronIndex) {
-          layer.derivatives[ii][ni] = derActivation(layer.activation)(layer.iwSum[ii][ni]) * layer.inputs[ii][weightIndex];
+          layer.derivatives[ii][ni] = derActivation(layer.activation)(layer.iwbSum[ii][ni]) * layer.inputs[ii][weightIndex];
         } else {
           layer.derivatives[ii][ni] = 0;
         }
@@ -158,16 +159,49 @@ void solveDerivatives(List<Layer> net, int neuronIndex, int weightIndex) {
       for (int ii = 0; ii < layer.inputs.length; ii ++) {
 
         double sum = 0;
-
         for (int wi = 0; wi < layer.weights[ni].length; wi ++) {
           sum += prevLayer.derivatives[ii][wi] * layer.weights[ni][wi];
         }
 
-        layer.derivatives[ii][ni] = derActivation(layer.activation)(layer.iwSum[ii][ni]) * sum;
+        layer.derivatives[ii][ni] = derActivation(layer.activation)(layer.iwbSum[ii][ni]) * sum;
       }
     }
+  }
+}
 
+void solveDerivativesRespectingBias(List<Layer> net, int neuronIndex) {
 
+  // solves first layer
+  {
+    Layer layer = net[0];
+
+    for (int ni = 0; ni < layer.neurons; ni ++) {
+      for (int ii = 0; ii < layer.inputs.length; ii ++) {
+        if (ni == neuronIndex) {
+          layer.derivatives[ii][ni] = derActivation(layer.activation)(layer.iwbSum[ii][ni]);
+        } else {
+          layer.derivatives[ii][ni] = 0;
+        }
+      }
+    }
+  }
+
+  // solves next layers
+  for (int li = 1; li < net.length; li ++) {
+    Layer layer = net[li];
+    Layer prevLayer = net[li - 1];
+
+    for (int ni = 0; ni < layer.neurons; ni ++) {
+      for (int ii = 0; ii < layer.inputs.length; ii ++) {
+
+        double sum = 0;
+        for (int wi = 0; wi < layer.weights[ni].length; wi ++) {
+          sum += prevLayer.derivatives[ii][wi] * layer.weights[ni][wi];
+        }
+
+        layer.derivatives[ii][ni] = derActivation(layer.activation)(layer.iwbSum[ii][ni]) * sum;
+      }
+    }
   }
 }
 
@@ -188,9 +222,8 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
 
     for (int ni = 0; ni < layerToLearn.neurons; ni ++) {
       for (int wi = 0; wi < layerToLearn.weights[ni].length; wi ++) {
-        //print('--- ucim neuron $ni a vahu $wi');
 
-        solveDerivatives(partialNet, ni, wi);
+        solveDerivativesRespectingWeight(partialNet, ni, wi);
 
         // tady musim mit vypocitanou derivaci podle wi pro vsechny vstupy a vystupy site
         double lossDerivation = 0;
@@ -205,12 +238,27 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
         }
 
         layerToLearn.weights[ni][wi] = layerToLearn.weights[ni][wi] - lr * lossDerivation;
-
-        //layerToLearn.infoWeightsAndBiases();
-
-        solveNet(partialNet); // po zmene kazde vahy je potreba prepocitat sit
-
+        solveNet(partialNet);
       }
+
+
+      solveDerivativesRespectingBias(partialNet, ni);
+
+      double lossDerivation = 0;
+
+      for (int ii = 0; ii < wantedResults.length; ii ++) {
+        List<double> wanted = wantedResults[ii];
+        List<double> result = lastLayer.outputs[ii];
+
+        for (int oi = 0; oi < result.length; oi++) {
+          lossDerivation += derLoss(lossFunction)(wanted[oi], result[oi]) * lastLayer.derivatives[ii][oi];
+        }
+      }
+
+      layerToLearn.biases[ni] = layerToLearn.biases[ni] - lr * lossDerivation;
+
+
+      solveNet(partialNet);
     }
 
 
@@ -293,7 +341,7 @@ void main() {
 
   // single perceptron net
   List<Layer> net = [
-    Layer(inputs[0].length, 2, sigmoid),
+    Layer(2, 2, sigmoid),
     Layer(2, 1, identity),
   ];
 
@@ -327,6 +375,7 @@ void main() {
   //net.last.infoWeightsAndBiases();
   //net.last.infoOutputs();
 
+  net.last.infoWeightsAndBiases();
 
 
   int duration = DateTime.now().millisecondsSinceEpoch - start;
