@@ -12,30 +12,29 @@ class Layer {
 
   int inputsCount;
 
-  /// [number of all possible input variants][one concrete input vector]
+  /// [input's index][one concrete input vector] = one concrete example of an input
   List<List<double>> inputs = [];
 
   /// number of neurons in this layer
   int neurons;
 
-  /// [number of neurons in this layer][number of inputs to this layer]
+  /// [neuron's index][weight's index]
   List<List<double>> weights = [];
 
-
-  // derivates with respect to a coresponding weight
-  // [number of all possible input variants][number of neurons][number of weights]
-  List<List<List<double>>> derivates = [];
-
-  // biases for all neurons in the layer
+  /// [neuron's index] bias for the specified neuron
   List<double> biases = [];
 
   ActivationFunction activation;
 
-  /// [input index][neuron index] = sum of neuron's i*w
+  /// [input's index][neuron's index] = sum of given neuron's i*w for specified input
   List<List<double>> iwSum = [];
 
-  /// [number of neurons in this layer][output vector for the given input vector]
+  /// [input's index][neuron's index] = given neuron output value for specified input
   List<List<double>> outputs = [];
+
+  /// [input's index][neuron's index] = given neuron derivative output for specified input
+  List<List<double>> derivatives = [];
+
 
   Layer(this.inputsCount, this.neurons, this.activation) {
     // weights initialization
@@ -64,6 +63,10 @@ class Layer {
 
     // all iwSum to 0
     iwSum = List.generate(
+        inputs.length, (_) => List.filled(neurons, 0, growable: false),
+        growable: false);
+
+    derivatives = List.generate(
         inputs.length, (_) => List.filled(neurons, 0, growable: false),
         growable: false);
 
@@ -98,22 +101,16 @@ class Layer {
     }
   }
 
-  void infoDerivates() {
-    print('--- derivates:');
-    for (int i = 0; i < inputs.length; i++) {
-      print('input $i ${inputs[i]} -> ${derivates[i]}');
-    }
-  }
 }
 
 /// Forward propagation of net's inputs to outputs
 void solveNet(List<Layer> net) {
 
-  for (int i = 0; i < net.length; i ++) {
-    Layer layer = net[i];
+  for (int li = 0; li < net.length; li ++) {
+    Layer layer = net[li];
 
-    if (i > 0) {
-      layer.inputs = net[i -1].outputs;
+    if (li > 0) {
+      layer.inputs = net[li -1].outputs;
     }
     layer.compute();
   }
@@ -134,43 +131,51 @@ double evaluateLoss(List<List<double>> netResults, List<List<double>> wantedResu
   return sum;
 }
 
+void solveDerivatives(List<Layer> net, int neuronIndex, int weightIndex) {
+
+  for (int li = 0; li < net.length; li ++) {
+    Layer layer = net[li];
+
+    for (int ni = 0; ni < layer.neurons; ni ++) {
+      for (int wi = 0; wi < layer.weights[ni].length; wi ++) {
+        for (int ii = 0; ii < layer.inputs.length; ii ++) {
+
+          if (li == 0) {
+            // the first layer of the net has specific derivatives
+            if (ni == neuronIndex && wi == weightIndex) {
+              layer.derivatives[ii][ni] = derActivation(layer.activation)(layer.iwSum[ii][ni]) * layer.inputs[ii][wi];
+            }
+          } else {
+            // TODO
+            //layer.derivatives[inputIndex][neuronIndex] = derActivation(layer.activation)(layer.iwSum[inputIndex][neuronIndex]) ;
+          }
+        }
+
+      }
+    }
+  }
+}
+
 
 void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossFunction, [double lr = 0.05]) {
 
-  for (int li = net.length - 1; li >= 0; li --) {
-
+  // moving backward through the layers
+  for (int fli = net.length - 1; fli >= 0; fli --) {
     List<Layer> partialNet = [];
-    for (int i = li; i < net.length; i ++) {
+    for (int i = fli; i < net.length; i ++) {
       partialNet.add(net[i]);
     }
-    Layer layer = partialNet.first;
+    Layer layerToLearn = partialNet.first;
     Layer lastLayer = net.last;
 
 
-    layer.derivates = List.generate(layer.inputs.length, (_) {
-      return List.generate(layer.neurons, (_) {
-        return List.filled(layer.weights[0].length, 0, growable: false);
-      }, growable: false);
-    }, growable: false);
+    // I need to compute derivatives here
 
+    for (int ni = 0; ni < layerToLearn.neurons; ni ++) {
+      for (int wi = 0; wi < layerToLearn.weights[ni].length; wi ++) {
+        print('--- ucim neuron $ni a vahu $wi');
 
-    for (int ni = 0; ni < layer.neurons; ni ++) {
-
-      for (int wi = 0; wi < layer.weights[ni].length; wi ++) {
-
-
-        for (int ii = 0; ii < layer.inputs.length; ii ++) {
-
-
-          for (int woi = 0; woi < layer.weights[ni].length; woi ++) {
-            layer.derivates[ii][ni][woi] = 0;
-          }
-
-          double inputSum = layer.iwSum[ii][ni];
-          layer.derivates[ii][ni][wi] = derActivation(layer.activation)(inputSum) * layer.inputs[ii][wi];
-
-          // vsechny ostatni derivace jine vahy nez wi musim v teto vrstve oznacit jako nula
-        }
+        solveDerivatives(partialNet, ni, wi);
 
         // tady musim mit vypocitanou derivaci podle wi pro vsechny vstupy a vystupy site
         double lossDerivation = 0;
@@ -180,16 +185,19 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
           List<double> result = lastLayer.outputs[ii];
 
           for (int oi = 0; oi < result.length; oi++) {
-            lossDerivation += derLoss(lossFunction)(wanted[oi], result[oi]) * layer.derivates[ii][oi][wi];
+            lossDerivation += derLoss(lossFunction)(wanted[oi], result[oi]) * lastLayer.derivatives[ii][oi];
           }
         }
 
-        layer.weights[ni][wi] = layer.weights[ni][wi] - lr * lossDerivation;
+        layerToLearn.weights[ni][wi] = layerToLearn.weights[ni][wi] - lr * lossDerivation;
+
+        layerToLearn.infoWeightsAndBiases();
+
         solveNet(partialNet); // po zmene kazde vahy je potreba prepocitat sit
 
       }
-
     }
+
 
   }
 
@@ -302,7 +310,6 @@ void main() {
   print('last layer info ----');
   net.last.infoWeightsAndBiases();
   //net.last.infoOutputs();
-  //net.last.infoDerivates();
 
 
 
