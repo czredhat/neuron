@@ -233,9 +233,7 @@ void main() async {
   Dataset mnistTrain = await loadMnist(MnistDatesetType.mnistTrain);
   Dataset mnistTest = await loadMnist(MnistDatesetType.mnistTest);
 
-  Dataset tests = getRandonSampleWithUniformHistogram(mnistTest, 100, random);
-  List<List<double>> testsInput = tests.inputs();
-  List<List<double>> testsOutput = tests.outputs();
+
 
   List<List<double>> wantedResults = [];
 
@@ -252,6 +250,8 @@ void main() async {
   List<List<double>> trainingInputs = [];
   List<List<double>> trainingWantedResults = [];
 
+  Dataset tests = getRandonSampleWithUniformHistogram(mnistTest, 1000, random);
+
   for (int step = 0; step < 200; step ++) {
 
     print('------------------- STEP $step -----------------------');
@@ -267,19 +267,28 @@ void main() async {
     }
 
     solveNet(net);
-    print('Training dataset Loss: ${evaluateLoss(lastLayer.outputs, wantedResults, simpleLoss)}');
+    print('Training dataset Loss: ${evaluateLoss(lastLayer.outputs, trainingWantedResults, simpleLoss)}');
 
+
+    List<List<double>> testsInput = tests.inputs();
+    List<List<double>> testsOutput = tests.outputs();
     firstLayer.inputs = testsInput;
-    wantedResults = testsOutput;
+
     solveNet(net);
-    print('Test dataset Loss: ${evaluateLoss(lastLayer.outputs, wantedResults, simpleLoss)}');
+    print('Test dataset Loss: ${evaluateLoss(lastLayer.outputs, testsOutput, simpleLoss)}');
 
     int successes = 0;
-    for (int i = 0; i < wantedResults.length; i ++) {
-      if (areVectorEqual(wantedResults[i], vectorToBinaryClassVector(lastLayer.outputs[i])) == true) {
+    for (int i = 0; i < testsOutput.length; i ++) {
+      if (areVectorEqual(testsOutput[i], vectorToBinaryClassVector(lastLayer.outputs[i])) == true) {
         successes ++;
       }
     }
+
+    for (int i = 0; i < 10; i ++) {
+      print('--- sample $i: ${binaryLabelVectorToLabelInt(testsOutput[i])} vs ${binaryLabelVectorToLabelInt(vectorToBinaryClassVector(lastLayer.outputs[i]))}');
+
+    }
+
     print('Succeed in $successes / ${testsOutput.length} inputs from tests dataset.');
 
     firstLayer.inputs = trainingInputs;
