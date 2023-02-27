@@ -1,14 +1,10 @@
-import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
-import 'package:archive/archive_io.dart';
-import 'package:csv/csv.dart';
 import 'package:neuron/dataset.dart';
 import 'package:neuron/mnist_utils.dart';
+import 'package:neuron/utils.dart';
 
 import '../lib/activation_functions.dart';
 import '../lib/loss_functions.dart';
-import '../lib/utils.dart';
 
 var random = math.Random(1);
 
@@ -49,14 +45,15 @@ class Layer {
 
     weights = [];
     for (var ni = 0; ni < neurons; ni++) {
-      weights.add(List.generate(inputsCount, (_) => random.nextDouble(), growable: false));
-      //weights.add(List.filled(inputsCount, 0, growable: false));
+      weights.add(List.generate(inputsCount, (_) {
+        return random.nextDouble() - 0.5;
+      }, growable: false));
     }
 
     // biases initialization
     biases = List.filled(neurons, 0, growable: false);
     for (var ni = 0; ni < neurons; ni++) {
-      biases[ni] = random.nextDouble();
+      biases[ni] = random.nextDouble() - 0.5;
     }
   }
 
@@ -236,57 +233,67 @@ void main() async {
   Dataset mnistTrain = await loadMnist(MnistDatesetType.mnistTrain);
   Dataset mnistTest = await loadMnist(MnistDatesetType.mnistTest);
 
-  Dataset randomDataset = getRandonSampleWithUniformHistogram(mnistTrain, 30, random);
-  printDatasetHistogram(randomDataset);
+  Dataset tests = getRandonSampleWithUniformHistogram(mnistTest, 100, random);
+  List<List<double>> testsInput = tests.inputs();
+  List<List<double>> testsOutput = tests.outputs();
 
+  List<List<double>> wantedResults = [];
 
-  return;
-
-  List<List<double>> inputs = [
-    [0, 0],
-    [0, 1],
-    [1, 0],
-    [1, 1]
-  ];
-  List<List<double>> wantedResults = [[0], [1], [1], [0] ]; // XOR
-
-
-  print('inputs: $inputs');
-  print('outputs: $wantedResults');
-
-  // single perceptron net
   List<Layer> net = [
-    Layer(2, 2, sigmoid),
-    Layer(2, 1, identity),
+    Layer(784, 10, sigmoid),
   ];
 
-  net.first.inputs = inputs;
-
+  //net.first.inputs = inputs;
+  Layer firstLayer = net.first;
+  Layer lastLayer = net.last;
 
   int start = DateTime.now().millisecondsSinceEpoch;
 
+  List<List<double>> trainingInputs = [];
+  List<List<double>> trainingWantedResults = [];
+
   for (int step = 0; step < 200; step ++) {
+
     print('------------------- STEP $step -----------------------');
+
+    if (step % 10 == 0) {
+      int batchSize = 30;
+      print('--- generating new batch of $batchSize samples... -----------------------');
+      Dataset batch = getRandonSampleWithUniformHistogram(mnistTrain, batchSize, random);
+      trainingInputs = batch.inputs();
+      trainingWantedResults = batch.outputs();
+      firstLayer.inputs = trainingInputs;
+      wantedResults = trainingWantedResults;
+    }
+
     solveNet(net);
+    print('Training dataset Loss: ${evaluateLoss(lastLayer.outputs, wantedResults, simpleLoss)}');
 
-    /*
-    for (int i = 0; i < inputs.length; i ++) {
-      print('input $i: ${inputs[i]} -> ${wantedResults[i]} vs ${net.last.outputs[i]} ');
+    firstLayer.inputs = testsInput;
+    wantedResults = testsOutput;
+    solveNet(net);
+    print('Test dataset Loss: ${evaluateLoss(lastLayer.outputs, wantedResults, simpleLoss)}');
+
+    int successes = 0;
+    for (int i = 0; i < wantedResults.length; i ++) {
+      if (areVectorEqual(wantedResults[i], vectorToBinaryClassVector(lastLayer.outputs[i])) == true) {
+        successes ++;
+      }
     }
-    */
+    print('Succeed in $successes / ${testsOutput.length} inputs from tests dataset.');
 
-    print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
-
-    if (isItClassifiedWell(wantedResults, net.last.outputs) == true) {
-      break;
-    }
+    firstLayer.inputs = trainingInputs;
+    wantedResults = trainingWantedResults;
+    solveNet(net);
 
     learn(net, wantedResults, simpleLoss, 0.3);
   }
 
+  /*
   for (int i = 0; i < inputs.length; i ++) {
     print('input $i: ${inputs[i]} -> ${wantedResults[i]} vs ${net.last.outputs[i]} ');
   }
+*/
 
   //net.last.infoWeightsAndBiases();
 

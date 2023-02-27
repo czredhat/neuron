@@ -16,4 +16,11 @@ class Dataset {
 
   Dataset(this.records);
 
+  List<List<double>> inputs() {
+    return records.map((e) => e.inputVector).toList();
+  }
+
+  List<List<double>> outputs() {
+    return records.map((e) => e.outputVector).toList();
+  }
 }
