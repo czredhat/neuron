@@ -14,3 +14,13 @@ bool isItClassifiedWell(List<List<double>> wantedResults, List<List<double>> res
   }
   return stop;
 }
+
+List<double> numberLabelToOutputVector(int num, int max) {
+  List<double> outputVector = List.filled(max, 0);
+  outputVector[num] = 1;
+  return outputVector;
+}
+
+int binaryLabelVectorToLabelInt(List<double> inputVector) {
+  return inputVector.indexWhere((element) => element >= 0.9);
+}

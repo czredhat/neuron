@@ -1,4 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
+import 'package:archive/archive_io.dart';
+import 'package:csv/csv.dart';
+import 'package:neuron/dataset.dart';
+import 'package:neuron/mnist_utils.dart';
 
 import '../lib/activation_functions.dart';
 import '../lib/loss_functions.dart';
@@ -224,70 +230,18 @@ void learn(List<Layer> net, List<List<double>> wantedResults, LossFunction lossF
 
 }
 
+void main() async {
 
-void main() {
+  print('Hello ------------------');
+  Dataset mnistTrain = await loadMnist(MnistDatesetType.mnistTrain);
+  Dataset mnistTest = await loadMnist(MnistDatesetType.mnistTest);
+
+  Dataset randomDataset = getRandonSampleWithUniformHistogram(mnistTrain, 30, random);
+  printDatasetHistogram(randomDataset);
 
 
-  // y = 2x + 3y
-/*
-  List<List<double>> inputs = [];
-  List<List<double>> wantedResults = [];
+  return;
 
-  for (int i = 0; i < 6; i ++) {
-    inputs.add([(i * 2).toDouble(), (i * 3).toDouble()]);
-    wantedResults.add([(i*2 - i*3.75).toDouble()]);
-  }
-*/
-/*
-  List<List<double>> inputs = [];
-  List<List<double>> wantedResults = [];
-  int k = 10;
-  for (int i = 0; i < k; i ++) {
-    inputs.add([i.toDouble() * (1/k)] );
-    wantedResults.add([(i).toDouble() * (1/k)]);
-  }
-*/
-
-/*
-  // y = 2x
-  List<List<double>> inputs = [];
-  List<List<double>> wantedResults = [];
-
-  for (int i = 0; i < 3; i ++) {
-    inputs.add([i.toDouble()]);
-    wantedResults.add([(i).toDouble()]);
-  }
-*/
-
-/*
-  List<List<double>> inputs = [];
-  List<List<double>> wantedResults = [];
-  int k = 10;
-  for (int i = 0; i < k; i ++) {
-    inputs.add([i.toDouble() * (1/k), i.toDouble() * (1/k)] );
-    wantedResults.add([(i).toDouble() * (1/k), (i).toDouble() * (1/k)]);
-  }
-*/
-/*
-  List<List<double>> inputs = [];
-  List<List<double>> wantedResults = [];
-  int k = 20;
-  for (int i = 0; i < k; i ++) {
-    inputs.add([i.toDouble() * (1/k)] );
-    wantedResults.add([(i).toDouble() * (1/k)]);
-  }
-*/
-/*
-  List<List<double>> inputs = [
-    [0, 0],
-    [0, 1],
-    [1, 0],
-    [1, 1]
-  ];
-  List<List<double>> wantedResults = [[0, 0, 0], [1, 0, 1], [1, 0, 1], [1, 1, 1] ]; // OR and AND gate
-*/
-
-/*
   List<List<double>> inputs = [
     [0, 0],
     [0, 1],
@@ -295,38 +249,23 @@ void main() {
     [1, 1]
   ];
   List<List<double>> wantedResults = [[0], [1], [1], [0] ]; // XOR
-*/
 
-  List<List<double>> inputs = [];
-  List<List<double>> wantedResults = [];
-
-  double pos = 0;
-  while (pos < (2 * math.pi)) {
-    inputs.add([ pos / (math.pi*2)]);
-    wantedResults.add([ math.sin(pos) ]);
-
-    pos += (2 * math.pi) / 40;
-  }
 
   print('inputs: $inputs');
   print('outputs: $wantedResults');
 
   // single perceptron net
   List<Layer> net = [
-    Layer(1, 40, sigmoid),
-    Layer(40, 1, identity),
+    Layer(2, 2, sigmoid),
+    Layer(2, 1, identity),
   ];
 
   net.first.inputs = inputs;
 
-  /*
-  net.first.infoWeightsAndBiases();
-  return ;
-*/
 
   int start = DateTime.now().millisecondsSinceEpoch;
 
-  for (int step = 0; step < 5000; step ++) {
+  for (int step = 0; step < 200; step ++) {
     print('------------------- STEP $step -----------------------');
     solveNet(net);
 
@@ -337,12 +276,12 @@ void main() {
     */
 
     print('Loss: ${evaluateLoss(net.last.outputs, wantedResults, simpleLoss)}');
-/*
+
     if (isItClassifiedWell(wantedResults, net.last.outputs) == true) {
       break;
     }
-*/
-    learn(net, wantedResults, simpleLoss, 0.02);
+
+    learn(net, wantedResults, simpleLoss, 0.3);
   }
 
   for (int i = 0; i < inputs.length; i ++) {
